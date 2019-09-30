@@ -1,0 +1,21 @@
+package com.sample.rules
+ 
+import com.sample.DroolsTest.Message;
+import com.sample.DroolsTest.Evaluator;
+import com.sample.DroolsTest.Action;
+
+global Evaluator msgEvaluator;
+ 
+rule "Process Message"
+    when
+        m: Message( )
+    then
+        msgEvaluator.evaluate(m)
+end
+
+rule "Process Action"
+    when
+        a: Action()
+    then
+        System.out.println('ACTION: ' + a.toString());
+end
