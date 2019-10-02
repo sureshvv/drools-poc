@@ -1,20 +1,25 @@
 package com.sample.rules
 
+import com.sample.DroolsTest.TimeThreshold;
 import com.sample.DroolsTest.TempThreshold;
 import com.sample.DroolsTest.CountThreshold;
 import com.sample.DroolsTest.TempReading;
 
+declare TempReading
+    @role( event )
+    @timestamp( timestamp.getTime() )
+//    @expires( 1d )
+end
+
 rule "Sound the alarm in case temperature rises above threshold"
-dialect "mvel"
 when
-    $t1: TempThreshold( )
-    $c1: CountThreshold( )
-    Number( doubleValue >= $c1.max ) from accumulate(
-        TempReading( temp >= $t1.max ),
+    $m1 : TempReading( temp >= 35 )
+    Number( doubleValue >= 2 ) from accumulate(
+        TempReading( temp >= 35, this after[0s, 2m] $m1 ),
 	    init( double total = 0; ),
             action( total += 1; ),
             reverse( total -= 1; ),
             result( total ) ) 
 then
-    System.out.println("Temp over max: " + $t1.max + " " + $c1.max + " times");
+    System.out.println("Temp over max");
 end
