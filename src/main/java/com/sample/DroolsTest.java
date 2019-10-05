@@ -8,8 +8,12 @@ import java.text.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kie.api.builder.KieFileSystem;
+import org.kie.api.builder.ReleaseId;
+import org.kie.api.builder.KieBuilder;
 import org.kie.api.KieServices;
 import org.kie.api.runtime.KieContainer;
+import org.kie.api.builder.Message;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.conf.EventProcessingOption;
 import org.kie.api.KieBaseConfiguration;
@@ -25,50 +29,9 @@ public class DroolsTest {
 
     public static final void main(String[] args) {
         try {
+	    KieContainer container = new DroolsTest().build(KieServices.Factory.get());
+	    KieSession session = container.newKieSession();
             // load up the knowledge base
-	    KieServices ks = KieServices.Factory.get();
-            // KieBaseConfiguration config = ks.newKieBaseConfiguration();
-            // config.setOption( EventProcessingOption.STREAM );
-    	    KieContainer kContainer = ks.getKieClasspathContainer();
-            KieSession kSession = kContainer.newKieSession("ksession-rules");
-            kSession.addEventListener(new RuleRuntimeEventListener() {
-                public void objectInserted(ObjectInsertedEvent event) {
-                    System.out.println("Object inserted \n"
-                            + event.getObject().toString());
-                }
-                public void objectUpdated(ObjectUpdatedEvent event) {
-                    System.out.println("Object was updated \n"
-                        + "new Content \n" + event.getObject().toString());
-                }
-                public void objectDeleted(ObjectDeletedEvent event) {
-                    System.out.println("Object retracted \n"
-                        + event.getOldObject().toString());
-                }
-            });
-
-            kSession.addEventListener(new DefaultAgendaEventListener() {
-                public void matchCreated(MatchCreatedEvent event) {
-                    System.out.println("The rule "
-                        + event.getMatch().getRule().getName()
-                        + " can be fired in agenda");
-                }
-                public void matchCancelled(MatchCancelledEvent event) {
-                    System.out.println("The rule "
-                        + event.getMatch().getRule().getName()
-                        + " cannot b in agenda");
-                }
-                public void beforeMatchFired(BeforeMatchFiredEvent event) {
-                    System.out.println("The rule "
-                        + event.getMatch().getRule().getName()
-                        + " will be fired");
-                }
-                public void afterMatchFired(AfterMatchFiredEvent event) {
-                    System.out.println("The rule "
-                        + event.getMatch().getRule().getName()
-                        + " has be fired");
-                }
-	    });
-
             // go !
             // TimeThreshold time1 = new TimeThreshold();
             // kSession.insert(time1);
@@ -79,16 +42,55 @@ public class DroolsTest {
             TempReading r1 = new TempReading();
             r1.setTemp(35);
             r1.setTimestamp("20191001:000000000");
-            kSession.insert(r1);
+            session.insert(r1);
             TempReading r2 = new TempReading();
-            r2.setTemp(35);
+            r2.setTemp(34);
             r2.setTimestamp("20191001:000100000");
-            // Thread.sleep(1000);
-            kSession.insert(r2);
-            kSession.fireAllRules();
+            session.insert(r2);
+            session.fireAllRules();
         } catch (Throwable t) {
             t.printStackTrace();
         }
+    }
+
+    public KieContainer build(KieServices kieServices) {
+	KieFileSystem kieFileSystem = kieServices.newKieFileSystem();
+	ReleaseId rid = kieServices.newReleaseId("com.sample.drools", "model-test", "1.0-SNAPSHOT");
+	kieFileSystem.generateAndWritePomXML(rid);
+
+	addRule(kieFileSystem);
+
+	KieBuilder kieBuilder = kieServices.newKieBuilder(kieFileSystem);
+	kieBuilder.buildAll();
+	if (kieBuilder.getResults().hasMessages(Message.Level.ERROR)) {
+	    throw new RuntimeException("Build Errors:\n" + kieBuilder.getResults().toString());
+	}
+		
+	return kieServices.newKieContainer(rid);
+    }
+
+    private void addRule(KieFileSystem kieFileSystem) {
+        String ruleStr = "import " + TimeThreshold.class.getCanonicalName() + ";\n" +
+            "import " + TempThreshold.class.getCanonicalName() + ";\n" +
+            "import " + CountThreshold.class.getCanonicalName() + ";\n" +
+            "import " + TempReading.class.getCanonicalName() + ";\n" +
+            "declare TempReading\n" +
+            "@role( event )\n" +
+            "@timestamp( timestamp.getTime() )\n" +
+            "end\n" +
+            "rule R when\n" +
+            "$m1 : TempReading( temp >= 35 )\n" + 
+            "Number( doubleValue >= 2 ) from accumulate(\n" +
+            "TempReading( temp >= 35, this after[0s, 2m] $m1 ),\n" +
+	    "init( double total = 0; ),\n" +
+            "action( total += 1; ),\n" +
+            "reverse( total -= 1; ),\n" +
+            "result( total ))\n" +
+            "then\n" +
+            "System.out.println(\"Temp over max\");\n" +
+            "end";
+
+        kieFileSystem.write("src/main/resources/rule-1.drl", ruleStr);
     }
 
     public static class TimeThreshold {
