@@ -31,21 +31,14 @@ public class DroolsTest {
         try {
 	    KieContainer container = new DroolsTest().build(KieServices.Factory.get());
 	    KieSession session = container.newKieSession();
-            // load up the knowledge base
             // go !
-            // TimeThreshold time1 = new TimeThreshold();
-            // kSession.insert(time1);
-            // TempThreshold temp1 = new TempThreshold();
-            // kSession.insert(temp1);
-            // CountThreshold cnt1 = new CountThreshold();
-            // kSession.insert(cnt1);
-            TempReading r1 = new TempReading();
-            r1.setTemp(35);
-            r1.setTimestamp("20191001:000000000");
+            TempThreshold temp1 = new TempThreshold(35);
+            session.insert(temp1);
+            CountThreshold cnt1 = new CountThreshold(2);
+            session.insert(cnt1);
+            TempReading r1 = new TempReading(35, "20191001:000000000");
             session.insert(r1);
-            TempReading r2 = new TempReading();
-            r2.setTemp(34);
-            r2.setTimestamp("20191001:000100000");
+            TempReading r2 = new TempReading(35, "20191001:000100000");
             session.insert(r2);
             session.fireAllRules();
         } catch (Throwable t) {
@@ -58,7 +51,7 @@ public class DroolsTest {
 	ReleaseId rid = kieServices.newReleaseId("com.sample.drools", "model-test", "1.0-SNAPSHOT");
 	kieFileSystem.generateAndWritePomXML(rid);
 
-	addRule(kieFileSystem);
+	addRule(kieFileSystem, "2m");
 
 	KieBuilder kieBuilder = kieServices.newKieBuilder(kieFileSystem);
 	kieBuilder.buildAll();
@@ -69,9 +62,8 @@ public class DroolsTest {
 	return kieServices.newKieContainer(rid);
     }
 
-    private void addRule(KieFileSystem kieFileSystem) {
-        String ruleStr = "import " + TimeThreshold.class.getCanonicalName() + ";\n" +
-            "import " + TempThreshold.class.getCanonicalName() + ";\n" +
+    private void addRule(KieFileSystem kieFileSystem, String timeLimit) {
+        String ruleStr = "import " + TempThreshold.class.getCanonicalName() + ";\n" +
             "import " + CountThreshold.class.getCanonicalName() + ";\n" +
             "import " + TempReading.class.getCanonicalName() + ";\n" +
             "declare TempReading\n" +
@@ -79,9 +71,11 @@ public class DroolsTest {
             "@timestamp( timestamp.getTime() )\n" +
             "end\n" +
             "rule R when\n" +
-            "$m1 : TempReading( temp >= 35 )\n" + 
-            "Number( doubleValue >= 2 ) from accumulate(\n" +
-            "TempReading( temp >= 35, this after[0s, 2m] $m1 ),\n" +
+            "$t1 : TempThreshold( )\n" + 
+            "$c1 : CountThreshold( )\n" + 
+            "$m1 : TempReading( temp >= $t1.max )\n" + 
+            "Number( doubleValue >= $c1.max ) from accumulate(\n" +
+            "TempReading( temp >= $t1.max, this after[0s," + timeLimit + "] $m1 ),\n" +
 	    "init( double total = 0; ),\n" +
             "action( total += 1; ),\n" +
             "reverse( total -= 1; ),\n" +
@@ -93,16 +87,20 @@ public class DroolsTest {
         kieFileSystem.write("src/main/resources/rule-1.drl", ruleStr);
     }
 
-    public static class TimeThreshold {
-        public static final String max = "2m";
-    }
-
     public static class TempThreshold {
-        public static final int max = 35;
+	public int max;
+
+        TempThreshold(int val) {
+            max = val;
+        }
     }
 
     public static class CountThreshold {
-        public static final int max = 2;
+        public int max;
+
+        CountThreshold(int val) {
+            max = val;
+        }
     }
 
     public static class TempReading {
@@ -113,6 +111,11 @@ public class DroolsTest {
 
         private int temp;
         private Date timestamp;
+
+        TempReading(int t1, String ts1) {
+            temp = t1;
+            setTimestamp(ts1);
+        }
 
         public int getTemp() {
             return this.temp;
@@ -132,7 +135,6 @@ public class DroolsTest {
 	    } catch (ParseException pe) {
              LOGGER.error("Error parsing timestamp: " + eventTimestamp);
          }
-
         }
     }
 }
