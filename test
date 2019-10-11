@@ -1,0 +1,8 @@
+{"RULEAPI": "fact", "name": "cold", type:"simple", "cond":"temp > 35" }
+{"RULEAPI": "fact", "name": "machine1", type:"simple", "cond":"asset == machine1" }
+{"RULEAPI": "fact", "name": "cold-machine1", type:"logical", "cond":"cold and machine1" }
+{"RULEAPI": "fact", "name": "warm-machine1", type:"logical", "cond":"cold or machine1" }
+{"RULEAPI": "fact", "name": "cold-often", type:"interval", "condition":"cold 2 2m" }
+{"RULEAPI": "build"}
+{"temp": 35, "timestamp": "20191001:000000000"}
+{"temp": 35, "timestamp": "20191001:000100000"}
