@@ -51,7 +51,7 @@ public class DroolsTest {
         InputStreamReader in= new InputStreamReader(System.in);
         BufferedReader input = new BufferedReader(in);
 	List<String> all_rules = new ArrayList<String>();
-        KieSession session;
+        KieSession session = null;
         String str;
 
         while (true) {
@@ -63,21 +63,24 @@ public class DroolsTest {
             if (str == null) {
                 break;
             }
-            JSONObject j1 = getLine(str);
+            JSONObject j1 = getLine(str.trim());
             String s1 = (String) j1.get("RULEAPI");
             if (s1 == null) {
                 String ts1 = (String) j1.get("timestamp");
                 String t1 = (String) j1.get("temp");
                 Reading r1 = new Reading(Integer.parseInt(t1), ts1);
-                session.insert(r1);
-                session.fireAllRules();
-            } else if (s1 == "build") {
+                if (session != null) {
+                    session.insert(r1);
+                    session.fireAllRules();
+		}
+            } else if (s1.equals("build")) {
 	        KieContainer container = build_rules(all_rules);
 	        session = container.newKieSession();
             } else {
                 String name = (String) j1.get("name");
                 String type = (String) j1.get("type");
                 String cond = (String) j1.get("cond");
+                System.out.println("++++++++ " + name + " - " + type + " - " + cond);
                 String ruleStr = getRule(name, type, cond);
                 all_rules.add(ruleStr);
             }
@@ -94,74 +97,95 @@ public class DroolsTest {
             int i = 0;
             while (iterator.hasNext()) {
                 i += 1;
-                kf1.write("src/main/resources/rule-" + i + ".drl", iterator.next());
+                String s1 = (String) iterator.next();
+                kf1.write("src/main/resources/rule-" + i + ".drl", s1);
             }
 	    KieBuilder kieBuilder = k1.newKieBuilder(kf1);
 	    kieBuilder.buildAll();
 	    if (kieBuilder.getResults().hasMessages(Message.Level.ERROR)) {
 	        throw new RuntimeException("Build Errors:\n" +
                                            kieBuilder.getResults().toString());
-	    }
+            }
 	    return k1.newKieContainer(rid);
         } catch (Throwable t) {
             t.printStackTrace();
         }
+        return null;
     }
 
     public static JSONObject getLine(String str) {
         JSONObject j1 = null;
         try {
             j1 = (JSONObject) JSONValue.parse(str);
+            System.out.println("++++++++ 2 " + j1.toString());
         } catch (Exception e) {
+            System.out.println("!!!! FAILED:  " + str);
             e.printStackTrace();
         }
         return j1;
     }
 
     private static String getRule(String name, String type, String cond) {
-        if (cond == "simple") {
+        if (type.equals("simple")) {
             return getSimpleRule(name, cond);
-        } else if (cond == "logical") {
-            return getLogicalRule(name, cond);
-        } else if (cond == "interval") {
+        } else if (type.equals("complex")) {
+            return getComplexRule(name, cond);
+        } else if (type.equals("interval")) {
             return getIntervalRule(name, cond);
         } else {
-	    throw new RuntimeException("Invalid condition: " + cond);
+	    throw new RuntimeException("Invalid condition type: " + type);
         }
     }
 
     private static String getSimpleRule(String name, String cond) {
-        String flds[] = cond.split(" ", 1);
-        String ruleStr = "rule " + name + " when\n" +
+        String flds[] = cond.split(" ", 2);
+        System.out.println("++ s +++++ " + cond);
+        System.out.println("+++ s ++++ " + flds[0]);
+        System.out.println("+++ s ++++ " + flds[1]);
+        String ruleStr = "import " + Fact.class.getCanonicalName() + ";\n" +
+            "import java.util.Map;\n" +
+            "rule " + name + " when\n" +
             "Map( this[\"" + flds[0] + "\"] " + flds[1] + " )\n" + 
             "then\n" +
-            "insertLogical( new Fact(\"" + name + "\") )\n" +
+            "insertLogical( new Fact(\"" + name + "\") );\n" +
             "end";
         return ruleStr;
     }
 
     private static String getComplexRule(String name, String cond) {
         String flds[] = cond.split(" ");
-        String ruleStr = "rule " + name + " when\n" +
-            "exists( Fact(\"" + flds[0] + "\") " + flds[1] + " Fact(\"" + flds[2] + "\") )\n" + 
+        String ruleStr = "import " + Fact.class.getCanonicalName() + ";\n" +
+            "dialect \"mvel\"\n" +
+            "rule " + name + " when\n" +
+            "exists( Fact(name == \"" + flds[0] + "\" " + flds[1] + " " +
+            "name == \"" + flds[2] + "\") )\n" + 
             "then\n" +
-            "insertLogical( new Fact(\"" + name + "\") )\n" +
+            "insertLogical( new Fact(\"" + name + "\") );\n" +
             "end";
+        System.out.println("COMPLEX: " + ruleStr);
         return ruleStr;
     }
 
     private static String getIntervalRule(String name, String cond) {
+        System.out.println("++ all +++++ " + name);
+        System.out.println("++ all +++++ " + cond);
         String flds[] = cond.split(" ");
+        System.out.println("+++ 0 ++++ " + flds[0]);
+        System.out.println("+++ 1 ++++ " + flds[1]);
+        System.out.println("+++ 2 ++++ " + flds[2]);
+        System.out.println("+++ 3 ++++ " + flds[3]);
+        System.out.println("+++ 4 ++++ " + flds[4]);
         String ruleStr = "import " + Reading.class.getCanonicalName() + ";\n" +
+            "import " + Fact.class.getCanonicalName() + ";\n" +
             "declare Reading\n" +
             "@role( event )\n" +
             "@timestamp( timestamp.getTime() )\n" +
             "end\n" +
             "rule " + name + " when\n" +
-            "$m1 : Reading( this[\"" + flds[0] + "\"] " + flds[1] + " " + flds[2] + " )\n" + 
+            "$m1 : Reading( " + flds[0] + " " + flds[1] + " " + flds[2] + " )\n" + 
             "Number( doubleValue >= " + flds[3] + " ) from accumulate(\n" +
-	    "Reading( this[\"" + flds[0] + "\"] " + flds[1] + flds[2] + 
-	    ", this after[0s," + flds[4] + "] $m1 ),\n" +
+	    "Reading( " + flds[0] + " " + flds[1] + " "  + flds[2] + ", " +
+	    "this after[0s," + flds[4] + "] $m1 ),\n" +
 	    "init( double total = 0; ),\n" +
             "action( total += 1; ),\n" +
             "reverse( total -= 1; ),\n" +
@@ -170,6 +194,23 @@ public class DroolsTest {
             "insertLogical( new Fact(\"" + name + "\") )\n" + 
             "end";
         return ruleStr;
+    }
+
+    public static class Fact {
+        private String name;
+
+        Fact() {
+            name = "";
+        }
+        Fact(String s1) {
+            name = s1;
+        }
+        public String getName() {
+            return this.name;
+        }
+        public void setName(String name) {
+            this.name = name;
+        }
     }
 
     public static class Reading {
