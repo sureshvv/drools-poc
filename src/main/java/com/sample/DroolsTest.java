@@ -147,22 +147,23 @@ public class DroolsTest {
             "rule " + name + " when\n" +
             "Map( this[\"" + flds[0] + "\"] " + flds[1] + " )\n" + 
             "then\n" +
-            "insertLogical( new Fact(\"" + name + "\") );\n" +
+            "Fact f1 = new Fact();\n" +
+            "insert( f1 );\n" +
             "end";
         return ruleStr;
     }
 
     private static String getComplexRule(String name, String cond) {
         String flds[] = cond.split(" ");
+        String mvel = "dialect \"mvel\"\n";
         String ruleStr = "import " + Fact.class.getCanonicalName() + ";\n" +
-            "dialect \"mvel\"\n" +
             "rule " + name + " when\n" +
             "exists( Fact(name == \"" + flds[0] + "\" " + flds[1] + " " +
             "name == \"" + flds[2] + "\") )\n" + 
             "then\n" +
-            "insertLogical( new Fact(\"" + name + "\") );\n" +
+            "Fact f1 = new Fact();\n" +
+            "insert( f1 );\n" +
             "end";
-        System.out.println("COMPLEX: " + ruleStr);
         return ruleStr;
     }
 
@@ -191,8 +192,10 @@ public class DroolsTest {
             "reverse( total -= 1; ),\n" +
             "result( total ))\n" +
             "then\n" +
-            "insertLogical( new Fact(\"" + name + "\") )\n" + 
+            "Fact f1 = new Fact();\n" +
+            "insert( f1 );\n" +
             "end";
+        System.out.println("INTERVAL: " + ruleStr);
         return ruleStr;
     }
 
