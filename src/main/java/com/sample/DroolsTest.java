@@ -80,7 +80,6 @@ public class DroolsTest {
                 String name = (String) j1.get("name");
                 String type = (String) j1.get("type");
                 String cond = (String) j1.get("cond");
-                System.out.println("++++++++ " + name + " - " + type + " - " + cond);
                 String ruleStr = getRule(name, type, cond);
                 all_rules.add(ruleStr);
             }
@@ -100,6 +99,10 @@ public class DroolsTest {
                 String s1 = (String) iterator.next();
                 kf1.write("src/main/resources/rule-" + i + ".drl", s1);
             }
+            i += 1;
+            String s1 = (String) getFinalRule();
+            kf1.write("src/main/resources/rule-" + i + ".drl", s1);
+
 	    KieBuilder kieBuilder = k1.newKieBuilder(kf1);
 	    kieBuilder.buildAll();
 	    if (kieBuilder.getResults().hasMessages(Message.Level.ERROR)) {
@@ -117,9 +120,7 @@ public class DroolsTest {
         JSONObject j1 = null;
         try {
             j1 = (JSONObject) JSONValue.parse(str);
-            System.out.println("++++++++ 2 " + j1.toString());
         } catch (Exception e) {
-            System.out.println("!!!! FAILED:  " + str);
             e.printStackTrace();
         }
         return j1;
@@ -139,9 +140,6 @@ public class DroolsTest {
 
     private static String getSimpleRule(String name, String cond) {
         String flds[] = cond.split(" ", 2);
-        System.out.println("++ s +++++ " + cond);
-        System.out.println("+++ s ++++ " + flds[0]);
-        System.out.println("+++ s ++++ " + flds[1]);
         String ruleStr = "import " + Fact.class.getCanonicalName() + ";\n" +
             "import java.util.Map;\n" +
             "rule " + name + " when\n" +
@@ -168,14 +166,7 @@ public class DroolsTest {
     }
 
     private static String getIntervalRule(String name, String cond) {
-        System.out.println("++ all +++++ " + name);
-        System.out.println("++ all +++++ " + cond);
         String flds[] = cond.split(" ");
-        System.out.println("+++ 0 ++++ " + flds[0]);
-        System.out.println("+++ 1 ++++ " + flds[1]);
-        System.out.println("+++ 2 ++++ " + flds[2]);
-        System.out.println("+++ 3 ++++ " + flds[3]);
-        System.out.println("+++ 4 ++++ " + flds[4]);
         String ruleStr = "import " + Reading.class.getCanonicalName() + ";\n" +
             "import " + Fact.class.getCanonicalName() + ";\n" +
             "declare Reading\n" +
@@ -195,7 +186,16 @@ public class DroolsTest {
             "Fact f1 = new Fact(\"" + name + "\");\n" +
             "insert( f1 );\n" +
             "end";
-        System.out.println("INTERVAL: " + ruleStr);
+        return ruleStr;
+    }
+
+    private static String getFinalRule() {
+        String ruleStr = "import " + Fact.class.getCanonicalName() + ";\n" +
+            "rule final when\n" +
+            "f1 : Fact( )\n" + 
+            "then\n" +
+            "System.out.println(\"RULE: \" + f1.getName() + \" fired\");\n" +
+            "end";
         return ruleStr;
     }
 
