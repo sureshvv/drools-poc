@@ -183,10 +183,10 @@ public class DroolsTest {
             "@timestamp( timestamp.getTime() )\n" +
             "end\n" +
             "rule " + name + " when\n" +
-            "$m1 : Reading( " + flds[0] + " " + flds[1] + " " + flds[2] + " )\n" + 
+            "m1 : Reading( " + flds[0] + " " + flds[1] + " " + flds[2] + " )\n" + 
             "Number( doubleValue >= " + flds[3] + " ) from accumulate(\n" +
 	    "Reading( " + flds[0] + " " + flds[1] + " "  + flds[2] + ", " +
-	    "this after[0s," + flds[4] + "] $m1 ),\n" +
+	    "this after[0s," + flds[4] + "] m1 ),\n" +
 	    "init( double total = 0; ),\n" +
             "action( total += 1; ),\n" +
             "reverse( total -= 1; ),\n" +
@@ -202,10 +202,10 @@ public class DroolsTest {
     public static class Fact {
         private String name;
 
-        Fact() {
+        public Fact() {
             name = "";
         }
-        Fact(String s1) {
+        public Fact(String s1) {
             name = s1;
         }
         public String getName() {
@@ -228,6 +228,10 @@ public class DroolsTest {
         Reading(int t1, String ts1) {
             temp = t1;
             setTimestamp(ts1);
+        }
+
+        public int getTemp() {
+            return this.temp;
         }
 
         public Date getTimestamp() {

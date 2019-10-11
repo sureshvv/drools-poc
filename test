@@ -1,8 +1,8 @@
-{"RULEAPI": "fact", "name": "cold", "type":"simple", "cond":"temp > 35" }
+{"RULEAPI": "fact", "name": "cold", "type":"simple", "cond":"temp >= 35" }
 {"RULEAPI": "fact", "name": "machine1", "type":"simple", "cond":"asset == machine1" }
 {"RULEAPI": "fact", "name": "cold_machine1", "type":"complex", "cond":"cold && machine1" }
 {"RULEAPI": "fact", "name": "warm_machine1", "type":"complex", "cond":"cold || machine1" }
-{"RULEAPI": "fact", "name": "cold_often", "type":"interval", "cond":"temp > 35 2 2m" }
+{"RULEAPI": "fact", "name": "cold_often", "type":"interval", "cond":"temp >= 35 2 2m" }
 {"RULEAPI": "build"}
-{"temp": 35, "timestamp": "20191001:000000000"}
-{"temp": 35, "timestamp": "20191001:000100000"}
+{"temp": "35", "timestamp": "20191001:000000000"}
+{"temp": "35", "timestamp": "20191001:000100000"}
