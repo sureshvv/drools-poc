@@ -147,7 +147,7 @@ public class DroolsTest {
             "rule " + name + " when\n" +
             "Map( this[\"" + flds[0] + "\"] " + flds[1] + " )\n" + 
             "then\n" +
-            "Fact f1 = new Fact();\n" +
+            "Fact f1 = new Fact(\"" + name + "\");\n" +
             "insert( f1 );\n" +
             "end";
         return ruleStr;
@@ -161,7 +161,7 @@ public class DroolsTest {
             "exists( Fact(name == \"" + flds[0] + "\" " + flds[1] + " " +
             "name == \"" + flds[2] + "\") )\n" + 
             "then\n" +
-            "Fact f1 = new Fact();\n" +
+            "Fact f1 = new Fact(\"" + name + "\");\n" +
             "insert( f1 );\n" +
             "end";
         return ruleStr;
@@ -192,7 +192,7 @@ public class DroolsTest {
             "reverse( total -= 1; ),\n" +
             "result( total ))\n" +
             "then\n" +
-            "Fact f1 = new Fact();\n" +
+            "Fact f1 = new Fact(\"" + name + "\");\n" +
             "insert( f1 );\n" +
             "end";
         System.out.println("INTERVAL: " + ruleStr);
@@ -202,9 +202,6 @@ public class DroolsTest {
     public static class Fact {
         private String name;
 
-        public Fact() {
-            name = "";
-        }
         public Fact(String s1) {
             name = s1;
         }
