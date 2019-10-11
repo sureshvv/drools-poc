@@ -6,6 +6,12 @@ import java.text.SimpleDateFormat;
 
 import java.util.Arrays;
 import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.HashMap; 
+import java.util.Map;
+import java.util.Iterator;
+
 import java.io.FileWriter;
 import java.io.FileReader;
 import java.io.IOException;
@@ -44,7 +50,8 @@ public class DroolsTest {
     public static final void main(String[] args) {
         InputStreamReader in= new InputStreamReader(System.in);
         BufferedReader input = new BufferedReader(in);
- 
+	List<String> all_rules = new ArrayList<String>();
+        KieSession session;
         String str;
 
         while (true) {
@@ -59,45 +66,46 @@ public class DroolsTest {
             JSONObject j1 = getLine(str);
             String s1 = (String) j1.get("RULEAPI");
             if (s1 == null) {
-                String t1 = (String) j1.get("temp");
                 String ts1 = (String) j1.get("timestamp");
-                if (t1 != null && ts1 == null) {
-                    TempReading r1 = new TempReading(Integer.parseInt(t1), ts1);
-                    // session.fireAllRules();
-		}
+                String t1 = (String) j1.get("temp");
+                Reading r1 = new Reading(Integer.parseInt(t1), ts1);
+                session.insert(r1);
+                session.fireAllRules();
+            } else if (s1 == "build") {
+	        KieContainer container = build_rules(all_rules);
+	        session = container.newKieSession();
             } else {
-                String name1 = (String) j1.get("name");
-                String type1 = (String) j1.get("type");
-                String cond1 = (String) j1.get("cond");
-                if (typ1 == "num") {
-                    String flds[] = cond1.split()
-                } else if (typ1 == "str") {
-                    String flds[] = cond1.split()
-                } else if (typ1 == "logical") {
-                    String flds[] = cond1.split()
-                } else if (typ1 == "interval") {
-                    String flds[] = cond1.split()
-                }
-                System.out.println("Type: " + typ1);
+                String name = (String) j1.get("name");
+                String type = (String) j1.get("type");
+                String cond = (String) j1.get("cond");
+                String ruleStr = getRule(name, type, cond);
+                all_rules.add(ruleStr);
             }
         }
     }
 
-    public void build_rule() {
+    public static KieContainer build_rules(List<String> rules) {
         try {
-	    KieContainer container = new DroolsTest().build(KieServices.Factory.get());
-	    KieSession session = container.newKieSession();
-            TempThreshold temp1 = new TempThreshold(35);
-            session.insert(temp1);
-            CountThreshold cnt1 = new CountThreshold(2);
-            session.insert(cnt1);
+	    KieServices k1 = KieServices.Factory.get();
+	    KieFileSystem kf1 = k1.newKieFileSystem();
+	    ReleaseId rid = k1.newReleaseId("com.sample.drools", "model-test", "1.0-SNAPSHOT");
+	    kf1.generateAndWritePomXML(rid);
+	    Iterator iterator = rules.iterator();
+            int i = 0;
+            while (iterator.hasNext()) {
+                i += 1;
+                kf1.write("src/main/resources/rule-" + i + ".drl", iterator.next());
+            }
+	    KieBuilder kieBuilder = k1.newKieBuilder(kf1);
+	    kieBuilder.buildAll();
+	    if (kieBuilder.getResults().hasMessages(Message.Level.ERROR)) {
+	        throw new RuntimeException("Build Errors:\n" +
+                                           kieBuilder.getResults().toString());
+	    }
+	    return k1.newKieContainer(rid);
         } catch (Throwable t) {
             t.printStackTrace();
         }
-    }
-
-    public void process_msg() {
-        // session.insert(r1);
     }
 
     public static JSONObject getLine(String str) {
@@ -110,114 +118,72 @@ public class DroolsTest {
         return j1;
     }
 
-    public KieContainer build(KieServices kieServices, String timeLimit) {
-	KieFileSystem kieFileSystem = kieServices.newKieFileSystem();
-	ReleaseId rid = kieServices.newReleaseId("com.sample.drools", "model-test", "1.0-SNAPSHOT");
-	kieFileSystem.generateAndWritePomXML(rid);
-
-	addRule(kieFileSystem, timeLimit);
-
-	KieBuilder kieBuilder = kieServices.newKieBuilder(kieFileSystem);
-	kieBuilder.buildAll();
-	if (kieBuilder.getResults().hasMessages(Message.Level.ERROR)) {
-	    throw new RuntimeException("Build Errors:\n" + kieBuilder.getResults().toString());
-	}
-		
-	return kieServices.newKieContainer(rid);
+    private static String getRule(String name, String type, String cond) {
+        if (cond == "simple") {
+            return getSimpleRule(name, cond);
+        } else if (cond == "logical") {
+            return getLogicalRule(name, cond);
+        } else if (cond == "interval") {
+            return getIntervalRule(name, cond);
+        } else {
+	    throw new RuntimeException("Invalid condition: " + cond);
+        }
     }
 
-    private void getRule(String name, String type, String cond) {
-        if (cond == "simple") {
-            return getSimpleRule(name, cond)
-        } else if (cond == "logical") {
-            return getLogicalRule(name, cond)
-        } else if (cond == "interval") {
-            return getIntervalRule(name, cond)
-        } else {
-            assert 0
-        }
-
-    private void getSimpleRule(String name, String cond) {
-        String flds[] = cond.split(" ", 1)
+    private static String getSimpleRule(String name, String cond) {
+        String flds[] = cond.split(" ", 1);
         String ruleStr = "rule " + name + " when\n" +
             "Map( this[\"" + flds[0] + "\"] " + flds[1] + " )\n" + 
             "then\n" +
-            "insertLogical( new Fact(\"" + name + "\") );
+            "insertLogical( new Fact(\"" + name + "\") )\n" +
             "end";
-        return ruleStr
+        return ruleStr;
     }
-    private void getComplexRule(String name, String cond) {
-        String flds[] = cond.split(" ")
+
+    private static String getComplexRule(String name, String cond) {
+        String flds[] = cond.split(" ");
         String ruleStr = "rule " + name + " when\n" +
-            "exists( Fact(\"" + flds[0] + "\") " + flds[1] + Fact(\"" + flds[2] + "\") )\n" + 
+            "exists( Fact(\"" + flds[0] + "\") " + flds[1] + " Fact(\"" + flds[2] + "\") )\n" + 
             "then\n" +
-            "insertLogical( new Fact(\"" + name + "\") );
+            "insertLogical( new Fact(\"" + name + "\") )\n" +
             "end";
-        return ruleStr
+        return ruleStr;
     }
 
-
-    private void addRule(KieFileSystem kieFileSystem, String timeLimit) {
-        String ruleStr = "import " + TempThreshold.class.getCanonicalName() + ";\n" +
-            "import " + CountThreshold.class.getCanonicalName() + ";\n" +
-            "import " + TempReading.class.getCanonicalName() + ";\n" +
-            "declare TempReading\n" +
+    private static String getIntervalRule(String name, String cond) {
+        String flds[] = cond.split(" ");
+        String ruleStr = "import " + Reading.class.getCanonicalName() + ";\n" +
+            "declare Reading\n" +
             "@role( event )\n" +
             "@timestamp( timestamp.getTime() )\n" +
             "end\n" +
-            "rule R when\n" +
-            "$t1 : TempThreshold( )\n" + 
-            "$c1 : CountThreshold( )\n" + 
-            "$m1 : TempReading( temp >= $t1.max )\n" + 
-            "Number( doubleValue >= $c1.max ) from accumulate(\n" +
-            "TempReading( temp >= $t1.max, this after[0s," + timeLimit + "] $m1 ),\n" +
+            "rule " + name + " when\n" +
+            "$m1 : Reading( this[\"" + flds[0] + "\"] " + flds[1] + " " + flds[2] + " )\n" + 
+            "Number( doubleValue >= " + flds[3] + " ) from accumulate(\n" +
+	    "Reading( this[\"" + flds[0] + "\"] " + flds[1] + flds[2] + 
+	    ", this after[0s," + flds[4] + "] $m1 ),\n" +
 	    "init( double total = 0; ),\n" +
             "action( total += 1; ),\n" +
             "reverse( total -= 1; ),\n" +
             "result( total ))\n" +
             "then\n" +
-            "System.out.println(\"Temp over max\");\n" +
+            "insertLogical( new Fact(\"" + name + "\") )\n" + 
             "end";
-
-        kieFileSystem.write("src/main/resources/rule-1.drl", ruleStr);
+        return ruleStr;
     }
 
-    public static class TempThreshold {
-	public int max;
+    public static class Reading {
 
-        TempThreshold(int val) {
-            max = val;
-        }
-    }
-
-    public static class CountThreshold {
-        public int max;
-
-        CountThreshold(int val) {
-            max = val;
-        }
-    }
-
-    public static class TempReading {
-
-        private static final Logger LOGGER = LoggerFactory.getLogger(TempReading.class);
+        private static final Logger LOGGER = LoggerFactory.getLogger(Reading.class);
         private static final DateFormat DATE_FORMAT = new SimpleDateFormat(
             "yyyyMMdd:HHmmssSSS");
 
         private int temp;
         private Date timestamp;
 
-        TempReading(int t1, String ts1) {
+        Reading(int t1, String ts1) {
             temp = t1;
             setTimestamp(ts1);
-        }
-
-        public int getTemp() {
-            return this.temp;
-        }
-
-        public void setTemp(int temp) {
-            this.temp = temp;
         }
 
         public Date getTimestamp() {
@@ -229,7 +195,7 @@ public class DroolsTest {
                 this.timestamp = DATE_FORMAT.parse(eventTimestamp.trim());
 	    } catch (Exception pe) {
              LOGGER.error("Error parsing timestamp: " + eventTimestamp);
-         }
+            }
         }
     }
 }
