@@ -63,21 +63,30 @@ public class DroolsTest {
             if (str == null) {
                 break;
             }
+            if (str.charAt(0) == '#') {
+                continue;
+            }
             JSONObject j1 = getLine(str.trim());
             String s1 = (String) j1.get("RULEAPI");
             if (s1 == null) {
                 String ts1 = (String) j1.get("timestamp");
-                String t1 = (String) j1.get("temp");
-                Reading r1 = new Reading(Integer.parseInt(t1), ts1);
-                if (session != null) {
-                    session.insert(r1);
-                    session.fireAllRules();
-		}
-            } else if (s1.equals("build")) {
+                if (ts1 == null) {
+                    if (session != null) {
+                        session.insert(j1);
+		    }
+                } else {
+                    String t1 = (String) j1.get("temp");
+                    Reading r1 = new Reading(Integer.parseInt(t1), ts1);
+                    if (session != null) {
+                        session.insert(r1);
+		    }
+                }
+                session.fireAllRules();
+            } else if (s1.equals("__build")) {
 	        KieContainer container = build_rules(all_rules);
 	        session = container.newKieSession();
             } else {
-                String name = (String) j1.get("name");
+                String name = s1;
                 String type = (String) j1.get("type");
                 String cond = (String) j1.get("cond");
                 String ruleStr = getRule(name, type, cond);
@@ -141,12 +150,12 @@ public class DroolsTest {
     private static String getSimpleRule(String name, String cond) {
         String flds[] = cond.split(" ", 2);
         String ruleStr = "import " + Fact.class.getCanonicalName() + ";\n" +
-            "import java.util.Map;\n" +
+            "import org.json.simple.JSONObject;\n" +
             "rule " + name + " when\n" +
-            "Map( this[\"" + flds[0] + "\"] " + flds[1] + " )\n" + 
+            "JSONObject( this[\"" + flds[0] + "\"] " + flds[1] + " )\n" + 
             "then\n" +
             "Fact f1 = new Fact(\"" + name + "\");\n" +
-            "insert( f1 );\n" +
+            "insertLogical( f1 );\n" +
             "end";
         return ruleStr;
     }
@@ -156,11 +165,11 @@ public class DroolsTest {
         String mvel = "dialect \"mvel\"\n";
         String ruleStr = "import " + Fact.class.getCanonicalName() + ";\n" +
             "rule " + name + " when\n" +
-            "exists( Fact(name == \"" + flds[0] + "\" " + flds[1] + " " +
-            "name == \"" + flds[2] + "\") )\n" + 
+            "exists( Fact(name == \"" + flds[0] + "\") ) " + flds[1] + " " +
+            "exists( Fact(name == \"" + flds[2] + "\") )" +
             "then\n" +
             "Fact f1 = new Fact(\"" + name + "\");\n" +
-            "insert( f1 );\n" +
+            "insertLogical( f1 );\n" +
             "end";
         return ruleStr;
     }
@@ -184,7 +193,7 @@ public class DroolsTest {
             "result( total ))\n" +
             "then\n" +
             "Fact f1 = new Fact(\"" + name + "\");\n" +
-            "insert( f1 );\n" +
+            "insertLogical( f1 );\n" +
             "end";
         return ruleStr;
     }
@@ -224,7 +233,9 @@ public class DroolsTest {
 
         Reading(int t1, String ts1) {
             temp = t1;
-            setTimestamp(ts1);
+            if (ts1 != null) {
+                setTimestamp(ts1);
+	    }
         }
 
         public int getTemp() {
