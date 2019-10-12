@@ -1,25 +1,10 @@
 package com.sample.rules
 
-import com.sample.DroolsTest.TimeThreshold;
-import com.sample.DroolsTest.TempThreshold;
-import com.sample.DroolsTest.CountThreshold;
-import com.sample.DroolsTest.TempReading;
-
-declare TempReading
-    @role( event )
-    @timestamp( timestamp.getTime() )
-//    @expires( 1d )
-end
+import com.sample.DroolsTest.Reading;
 
 rule "Sound the alarm in case temperature rises above threshold"
 when
-    $m1 : TempReading( temp >= 35 )
-    Number( doubleValue >= 2 ) from accumulate(
-        TempReading( temp >= 35, this after[0s, 2m] $m1 ),
-	    init( double total = 0; ),
-            action( total += 1; ),
-            reverse( total -= 1; ),
-            result( total ) ) 
+    Reading( )
 then
-    System.out.println("Temp over max");
+    System.out.println("Reading");
 end

@@ -3,10 +3,4 @@
     <kbase name="rules" equalsBehavior="equality" packages="com.sample.rules">
         <ksession name="ksession-rules" default="true" type="stateful" />
     </kbase>
-    <kbase name="dtables" packages="com.sample.dtables">
-        <ksession name="ksession-dtables"/>
-    </kbase>
-    <kbase name="process" packages="com.sample.process">
-        <ksession name="ksession-process"/>
-    </kbase>
 </kmodule>

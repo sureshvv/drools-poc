@@ -1,9 +1,10 @@
-{"RULEAPI": "cold", "type":"simple", "cond":"temp >= 35" }
+{"RULEAPI": "hot", "type":"simple", "cond":"temp >= 35" }
 {"RULEAPI": "machine1", "type":"simple", "cond":"asset == \"machine1\"" }
-{"RULEAPI": "cold_machine1", "type":"complex", "cond":"cold && machine1" }
-{"RULEAPI": "warm_machine1", "type":"complex", "cond":"cold || machine1" }
+{"RULEAPI": "hot_machine1", "type":"complex", "cond":"hot && machine1" }
+{"RULEAPI": "warm_machine1", "type":"complex", "cond":"hot || machine1" }
 {"RULEAPI": "cold_often", "type":"interval", "cond":"temp >= 35 2 2m" }
 {"RULEAPI": "__build"}
+{"temp": 35, "asset": "machine1"}
 {"temp": 35, "asset": "machine2"}
 {"temp": "35", "timestamp": "20191001:000000000"}
 {"temp": "35", "timestamp": "20191001:000100000"}
